@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario de Doña Rosa</title>
+    <!-- Tailwind CSS CDN para estilos responsivos y modernos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .container {
+            max-width: 90%;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        input[type="text"], input[type="number"] {
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            padding: 0.75rem 1rem;
+            width: 100%;
+            box-sizing: border-box; /* Asegura que el padding no aumente el ancho total */
+        }
+        button {
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        .btn-primary {
+            background-color: #4CAF50; /* Verde */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #45a049;
+        }
+        .btn-secondary {
+            background-color: #2196F3; /* Azul */
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #1a7bbd;
+        }
+        .btn-danger {
+            background-color: #f44336; /* Rojo */
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #da190b;
+        }
+        .table-header th {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            background-color: #f3f4f6;
+            font-weight: 700;
+            color: #4b5563;
+        }
+        .table-row td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .table-row:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        .table-row:hover {
+            background-color: #eef2ff;
+        }
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            z-index: 1000;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .message-box.show {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Inventario de Doña Rosa</h1>
+
+        <!-- Sección de Añadir/Editar Producto -->
+        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-sm">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-700">Añadir/Editar Producto</h2>
+            <form id="productForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="productId">
+                <div>
+                    <label for="productName" class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
+                    <input type="text" id="productName" placeholder="Nombre del producto" required
+                           class="focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="productPrice" class="block text-sm font-medium text-gray-700 mb-1">Precio</label>
+                    <input type="number" id="productPrice" placeholder="Precio (ej: 1500)" required min="0"
+                           class="focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="productQuantity" class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+                    <input type="number" id="productQuantity" placeholder="Cantidad (ej: 50)" required min="0"
+                           class="focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="md:col-span-2 flex justify-end space-x-3 mt-4">
+                    <button type="submit" class="btn-primary">Guardar Producto</button>
+                    <button type="button" id="cancelEditBtn" class="btn-secondary hidden" onclick="resetForm()">Cancelar Edición</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sección de Resumen del Inventario -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="p-6 bg-green-50 rounded-lg shadow-sm">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Resumen del Inventario</h2>
+                <p class="text-lg text-gray-800">Costo Total del Inventario: <span id="totalInventoryCost" class="font-bold text-green-700">$0</span></p>
+            </div>
+            <div class="p-6 bg-yellow-50 rounded-lg shadow-sm">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Productos por Agotarse</h2>
+                <ul id="lowStockProducts" class="list-disc pl-5 text-gray-700">
+                    <!-- Los productos se cargarán aquí -->
+                    <li>No hay productos por agotarse.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Tabla de Productos -->
+        <div class="overflow-x-auto bg-gray-50 rounded-lg shadow-sm">
+            <h2 class="text-2xl font-semibold mb-4 p-6 text-gray-700">Lista de Productos</h2>
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="table-header">
+                    <tr>
+                        <th>Código</th>
+                        <th>Producto</th>
+                        <th>Precio</th>
+                        <th>Cantidad</th>
+                        <th>Cantidad Inicial</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="productList" class="divide-y divide-gray-200">
+                    <!-- Los productos se cargarán aquí -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Message Box (reemplaza alert) -->
+    <div id="messageBox" class="message-box">
+        <p id="messageText"></p>
+        <button class="mt-3 btn-secondary" onclick="hideMessageBox()">OK</button>
+    </div>
+
+    <script>
+        // Array para almacenar los productos (simula la base de datos)
+        // En una aplicación real con Spring Boot, esta información vendría de una base de datos.
+        let products = [
+            { id: 1, name: "Peras", price: 4000, quantity: 65, initialQuantity: 65 },
+            { id: 2, name: "Limones", price: 1500, quantity: 25, initialQuantity: 25 },
+            { id: 3, name: "Moras", price: 2000, quantity: 30, initialQuantity: 30 },
+            { id: 4, name: "Piñas", price: 3000, quantity: 15, initialQuantity: 15 },
+            { id: 5, name: "Tomates", price: 1000, quantity: 30, initialQuantity: 30 },
+            { id: 6, name: "Fresas", price: 3000, quantity: 12, initialQuantity: 12 },
+            { id: 7, name: "Frunas", price: 300, quantity: 50, initialQuantity: 50 },
+            { id: 8, name: "Galletas", price: 500, quantity: 400, initialQuantity: 400 },
+            { id: 9, name: "Chocolates", price: 1200, quantity: 500, initialQuantity: 500 },
+            { id: 10, name: "Arroz", price: 1200, quantity: 60, initialQuantity: 60 }
+        ];
+
+        let nextId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+
+        // Referencias a elementos del DOM
+        const productForm = document.getElementById('productForm');
+        const productIdInput = document.getElementById('productId');
+        const productNameInput = document.getElementById('productName');
+        const productPriceInput = document.getElementById('productPrice');
+        const productQuantityInput = document.getElementById('productQuantity');
+        const productList = document.getElementById('productList');
+        const totalInventoryCostElement = document.getElementById('totalInventoryCost');
+        const lowStockProductsElement = document.getElementById('lowStockProducts');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+
+        /**
+         * Muestra un mensaje al usuario en un cuadro de diálogo personalizado.
+         * Reemplaza la función alert().
+         * @param {string} message - El mensaje a mostrar.
+         */
+        function showMessageBox(message) {
+            messageText.textContent = message;
+            messageBox.classList.add('show');
+        }
+
+        /**
+         * Oculta el cuadro de diálogo de mensajes.
+         */
+        function hideMessageBox() {
+            messageBox.classList.remove('show');
+        }
+
+        /**
+         * Renderiza la lista de productos en la tabla.
+         * Calcula el costo total del inventario y los productos por agotarse.
+         */
+        function renderProducts() {
+            productList.innerHTML = ''; // Limpiar la tabla
+            let totalCost = 0;
+            let lowStockItems = [];
+
+            if (products.length === 0) {
+                productList.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No hay productos en el inventario.</td></tr>';
+            }
+
+            products.forEach(product => {
+                // Calcular costo total
+                totalCost += product.price * product.quantity;
+
+                // Calcular productos por agotarse (10% de la cantidad inicial)
+                const depletionThreshold = product.initialQuantity * 0.10;
+                if (product.quantity <= depletionThreshold && product.quantity > 0) {
+                    lowStockItems.push(`${product.name} (Quedan: ${product.quantity}, Umbral: ${depletionThreshold.toFixed(0)})`);
+                } else if (product.quantity === 0) {
+                    lowStockItems.push(`${product.name} (Agotado)`);
+                }
+
+                // Crear fila de la tabla
+                const row = document.createElement('tr');
+                row.className = 'table-row';
+                row.innerHTML = `
+                    <td>${product.id}</td>
+                    <td>${product.name}</td>
+                    <td>$${product.price.toLocaleString('es-CO')}</td>
+                    <td>${product.quantity}</td>
+                    <td>${product.initialQuantity}</td>
+                    <td class="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-2">
+                        <button class="btn-secondary text-xs sm:text-sm py-1 px-2" onclick="editProduct(${product.id})">Editar</button>
+                        <button class="btn-danger text-xs sm:text-sm py-1 px-2" onclick="deleteProduct(${product.id})">Borrar</button>
+                    </td>
+                `;
+                productList.appendChild(row);
+            });
+
+            // Actualizar costo total del inventario
+            totalInventoryCostElement.textContent = `$${totalCost.toLocaleString('es-CO')}`;
+
+            // Actualizar lista de productos por agotarse
+            lowStockProductsElement.innerHTML = '';
+            if (lowStockItems.length > 0) {
+                lowStockItems.forEach(item => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = item;
+                    lowStockProductsElement.appendChild(listItem);
+                });
+            } else {
+                const listItem = document.createElement('li');
+                listItem.textContent = 'No hay productos por agotarse.';
+                lowStockProductsElement.appendChild(listItem);
+            }
+        }
+
+        /**
+         * Maneja el envío del formulario para añadir o actualizar un producto.
+         * @param {Event} event - El evento de envío del formulario.
+         */
+        productForm.addEventListener('submit', function(event) {
+            event.preventDefault(); // Evitar el envío por defecto del formulario
+
+            // Obtener valores del formulario
+            const id = productIdInput.value ? parseInt(productIdInput.value) : null;
+            const name = productNameInput.value.trim();
+            const price = parseFloat(productPriceInput.value);
+            const quantity = parseInt(productQuantityInput.value);
+
+            // Validaciones básicas
+            if (!name || isNaN(price) || isNaN(quantity) || price < 0 || quantity < 0) {
+                showMessageBox('Por favor, complete todos los campos correctamente y asegúrese de que el precio y la cantidad sean números positivos.');
+                return;
+            }
+
+            if (id) {
+                // Actualizar producto existente
+                const productIndex = products.findIndex(p => p.id === id);
+                if (productIndex !== -1) {
+                    products[productIndex].name = name;
+                    products[productIndex].price = price;
+                    products[productIndex].quantity = quantity;
+                    // Si se actualiza la cantidad inicial (ej. llega más producto), se puede actualizar aquí también.
+                    // Por simplicidad, la cantidad inicial solo se establece al añadir por primera vez.
+                    showMessageBox('Producto actualizado exitosamente.');
+                }
+            } else {
+                // Añadir nuevo producto
+                const newProduct = {
+                    id: nextId++,
+                    name: name,
+                    price: price,
+                    quantity: quantity,
+                    initialQuantity: quantity // La cantidad inicial es la cantidad al momento de agregar
+                };
+                products.push(newProduct);
+                showMessageBox('Producto añadido exitosamente.');
+            }
+
+            renderProducts(); // Volver a renderizar la tabla
+            resetForm(); // Limpiar el formulario
+        });
+
+        /**
+         * Carga los datos de un producto en el formulario para su edición.
+         * @param {number} id - El ID del producto a editar.
+         */
+        function editProduct(id) {
+            const productToEdit = products.find(p => p.id === id);
+            if (productToEdit) {
+                productIdInput.value = productToEdit.id;
+                productNameInput.value = productToEdit.name;
+                productPriceInput.value = productToEdit.price;
+                productQuantityInput.value = productToEdit.quantity;
+                cancelEditBtn.classList.remove('hidden'); // Mostrar botón de cancelar
+            }
+        }
+
+        /**
+         * Elimina un producto del inventario.
+         * @param {number} id - El ID del producto a eliminar.
+         */
+        function deleteProduct(id) {
+            showMessageBox('¿Está seguro de que desea eliminar este producto? Presione OK para confirmar.', 'confirm', () => {
+                products = products.filter(p => p.id !== id);
+                renderProducts();
+                showMessageBox('Producto eliminado exitosamente.');
+                resetForm(); // Resetear formulario por si estaba en modo edición
+            });
+            // Sobreescribir el handler del botón OK para que también elimine
+            document.querySelector('#messageBox button').onclick = () => {
+                products = products.filter(p => p.id !== id);
+                renderProducts();
+                hideMessageBox();
+                showMessageBox('Producto eliminado exitosamente.');
+                resetForm(); // Resetear formulario por si estaba en modo edición
+            };
+        }
+        
+        /**
+         * Resetea el formulario a su estado inicial para añadir un nuevo producto.
+         */
+        function resetForm() {
+            productForm.reset(); // Limpiar todos los campos del formulario
+            productIdInput.value = ''; // Asegurarse de que el ID oculto también se limpie
+            cancelEditBtn.classList.add('hidden'); // Ocultar botón de cancelar
+        }
+
+        // Renderizar productos al cargar la página
+        document.addEventListener('DOMContentLoaded', renderProducts);
+    </script>
+</body>
+</html>
